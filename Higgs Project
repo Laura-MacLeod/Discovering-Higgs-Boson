@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun May 30 17:23:43 2021
+
+@author: laura
+"""
+
+import STOM_higgs_tools
+import numpy as np
+import matplotlib.pyplot as plt
+
+# The following function produces the simulated data-set - re-running the function will provide a new set of data.
+# Keep the function below commented to keep the same data, but it will need to be re-run when reopening this file.
+
+# vals = STOM_higgs_tools.generate_data()
+
+
+# Numpy's histogram function turns the data 'vals' into histogram data, so the data is grouped into 30 bins equally spread over the range 104-155.
+
+hist, binedge = np.histogram(vals, bins=30, range=(104,155))
+
+# It returns 2 parameters - 'hist' contains the 30 frequency values associated with each bin, and 'binedge' provides the 31 edge values for each bin.
+# A histogram is plotted using pyplot's hist function, using the original data and the bin edges.
+
+plt.figure(0)
+plt.hist(vals, binedge, color='teal')
+plt.ylabel("Number of Entries")
+plt.xlabel("Rest Energy [GeV]")
+
+
+# In order to plot a scatter graph where each data point represents the frequency of one bin, the midpoint of each bin must be found (so there are 30 x values rather than 31).
+
+binmid = []
+
+for i in range(0, 30):
+    binmid.append(((binedge[i] + binedge[i+1])/2))
+
+
+# This new list 'binmid' containing the bins' midpoints is plotted against 'hist' to give a scatter graph.
+
+plt.figure(1)
+plt.plot(binmid, hist, 'o', c='#6D46AC')
+plt.ylabel("Number of Entries")
+plt.xlabel("Rest Energy [GeV]")
+
+
+# Each bin is approximated as a Poisson distribution which is approximated as a Gaussian since N is large, and so the uncertainty is given by sqrt(n) for each bin.
+# Add errorbars to the graphs.
+
+yerrs = np.sqrt(hist)
+
+plt.figure(1)
+plt.errorbar(binmid, hist, yerr=yerrs, ls='none', capsize=3, c='k')
+
+plt.figure(0)
+plt.errorbar(binmid, hist, yerr=yerrs, ls='none', capsize=3, c='k')
+
+
+
+# Write a function that returns values for the function A e^(-x/λ)
+
+linvalues = np.linspace(104, 155, 100)
+
+def expfunc(A, lam, x):
+    xdata = []
+    for m in x:
+        xdata.append(A*np.exp(-m/lam))
+    return xdata
+
+
+# Take the exponential distribution as 1/λ e^(-x/λ) and use the maximum likelihood method to get λ = Σx / N.
+# Calculate a lambda value for the full data range (not as accurate)
+
+lambfull = (sum(vals)/len(vals))
+
+# exponentialfull = expfunc(1, lambfull, linvalues)
+# plt.figure(2)
+# plt.plot(linvalues, exponentialfull)
+
+
+# Calculate a lambda value for the data below 120GeV so it avoids the signal bumb.
+
+cutvals = []
+
+for n in vals:
+    if n < 120 or n > 130:
+        cutvals.append(n)
+
+lambcut = (sum(cutvals)/len(cutvals))
+print(lambcut)
+
+# exponentialcut = expfunc(1, lambcut, linvalues)
+# plt.figure(3)
+# plt.plot(linvalues, exponentialcut)
+
+
+# Area under histogram:
+
+areahist = sum(hist) * 1.7
+
+
+# To find the area under unnormalised exponential (A=1), integrate A e^(-x/λ) in the range x = 104,155 which is area = -λ(e^(-155/λ)-e^(-104/λ))
+
+area_unnormalised = -lambcut * (np.exp(-155/lambcut) - np.exp(-104/lambcut))
+
+
+# The A value is just the ratio between areas
+
+A = areahist/area_unnormalised
+print(A)
+
+
+# Plot fit onto histogram
+
+exponentialscaled = expfunc(A, lambcut, linvalues)
+
+plt.figure(1)
+plt.plot(linvalues, exponentialscaled, c='r')
+
+
+# Use get_B_chi to get chi squared value
+
+chi = get_B_chi(vals, (104,155), 30, A, lambcut)
+print(chi)
+
+
+# Create lists that contain a range of test lambda and A values around the previously calculated values
+
+lambtest = np.linspace(lambcut-1, lambcut+2, 10)
+
+Atest = np.linspace(A-1000, A+1001, 10)
+
+
+# Using get_B_chi again, iterate through all combinations of test lambda's and A's to find all possible chi values and add to chitest.
+# In the same nested for loops, add the lambda and A values to a separate list so we know which chi value corresponds to which specific combination of lambda and A values.
+
+chitest = []
+A_lamb = []
+
+for A in Atest:
+    for lamb in lambtest:
+        chitest.append(get_B_chi(vals, (104,155), 30, A, lamb))
+        A_lamb.append([A, lamb])
+
+
+# Get the minimum chi from the list of test chi's
+
+minchi = min(chitest)
+print(minchi)
+
+
+# Match the minimum chi to the associated lambda and A values.
+
+new_A, new_lamb = A_lamb[chitest.index(minchi)]
+print(new_A)
+print(new_lamb)
+
+
+# Plot the same histogram scatter graph from before, but using the new lambda and A values.
+
+plt.figure(4)
+plt.plot(binmid, hist, 'o', c='k')
+plt.ylabel("Number of Entries")
+plt.xlabel("Rest Energy [GeV]")
+plt.errorbar(binmid, hist, yerr=yerrs, ls='none', capsize=2, c='k')
+
+new_exponential = expfunc(new_A, new_lamb, linvalues)
+
+plt.plot(linvalues, new_exponential, c='r')
+
+
+
+
+
+
+
+

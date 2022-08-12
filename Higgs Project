@@ -6,6 +6,8 @@ Created on Sun May 30 17:23:43 2021
 @author: laura
 """
 
+# Laura MacLeod has only partial ownership. File written by four others also.
+
 import STOM_higgs_tools
 import numpy as np
 import matplotlib.pyplot as plt
